@@ -93,6 +93,15 @@ codex_py/                # Root package
 - Compare each new Python module with its TypeScript counterpart to ensure feature parity.
 - Keep commits small and run tests often.
 
+## 6. CLI Workflow Reference
+
+If you want to see how a task flows through the existing TypeScript
+implementation of the Codex CLI, check out
+[`workflow.md`](codex-old/workflow.md). It walks through what happens after you
+launch `codex` with a prompt: from loading configuration, creating the
+`AgentLoop`, streaming responses from the OpenAI API and executing shell
+commands, all the way to writing the rollout log.
+
 ---
 
 This guideline provides one possible path for porting the Codex CLI to Python. Feel free to adjust the structure and libraries to match your preferences or project requirements.
