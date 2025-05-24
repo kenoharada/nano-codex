@@ -20,35 +20,32 @@ Before rewriting, skim through these directories to familiarize yourself with th
    ```
 3. Install initial dependencies:
    ```bash
-   pip install openai typer rich pytest
+   pip install openai typer rich python-dotenv pytest
    ```
    - **Typer** builds friendly CLIs (based on Click).
    - **Rich** lets you print colored text and build simple text UIs. For more advanced terminal interfaces, consider **Textual**.
+   - **python-dotenv** loads variables from a `.env` file so you can keep your OpenAI key out of the code.
+   - **pytest** is used for writing and running tests.
 
 ## 3. Suggested Folder Structure
 
 ```
-codex_py/                # Root package
-├── codex_cli/           # Python implementation of the CLI
+codex_py/
+├── cli/
 │   ├── __init__.py
-│   ├── main.py          # Entry point for `python -m codex_cli`
-│   ├── app.py           # High level application logic
-│   ├── agent/           # Agent loop and command execution
-│   │   ├── __init__.py
-│   │   ├── loop.py
-│   │   └── sandbox.py
-│   ├── utils/           # Helper modules
-│   │   ├── __init__.py
-│   │   ├── config.py
-│   │   ├── file_ops.py
-│   │   └── parsing.py
-│   └── components/      # Optional Rich/Textual UI pieces
-│       ├── __init__.py
-│       └── prompts.py
-├── tests/               # Pytest test suite
-│   └── test_basic.py
-├── README.md
-└── pyproject.toml       # Build configuration (alternatively setup.py)
+│   └── main.py          # entry point for `codex`
+├── agent/
+│   ├── __init__.py
+│   ├── loop.py          # equivalent to agent-loop.ts
+│   └── exec.py          # run shell commands safely
+├── ui/
+│   ├── __init__.py
+│   └── terminal.py      # Rich/Textual interface
+├── utils/
+│   ├── __init__.py
+│   └── config.py        # read ~/.codex/instructions.md etc.
+├── logs/                # rollout files
+└── tests/
 ```
 
 - `main.py` exposes a `typer.Typer` application. Define commands and options that mirror the original Node CLI (e.g., `--model`, `--quiet`, `--approval-mode`).
@@ -62,29 +59,29 @@ codex_py/                # Root package
    - Create the folder structure above and add an empty `__init__.py` file to each package.
    - Use `pyproject.toml` (with Poetry or plain setuptools) to manage dependencies.
 
-2. **Recreate the CLI**
-   - Translate the command‑line flags defined in `codex-cli/src/cli.tsx` to Typer options.
-   - Start with a basic command that prints the received prompt.
+2. **CLI Invocation**
+   - Build a Typer application in `cli/main.py` that parses options such as `--model` and `--quiet`.
+   - Load variables from `.env` using `python-dotenv` and merge configuration files in `utils/config.py`.
 
-3. **Integrate OpenAI**
-   - Use the `openai` package to send prompts and stream responses. Begin with a simple call like `openai.chat.completions.create()`.
-   - Store the API key in an environment variable or a config file (`utils/config.py`).
+3. **Create UI and AgentLoop**
+   - Implement `AgentLoop` in `agent/loop.py` to handle interactions with the OpenAI API.
+   - Render a basic chat interface from `ui/terminal.py` using Rich. Quiet mode can simply print the final answer.
 
-4. **Implement the Agent Loop**
-   - Port the logic from `utils/agent/agent-loop.ts` to `agent/loop.py`.
-   - Handle streaming, command approvals, and applying patches to files. Python's `subprocess` module can run shell commands. Wrap them in a sandbox (Docker or similar) for safety.
+4. **Send the First Prompt**
+   - Convert the user prompt into input items (small dataclasses) and call `AgentLoop.run()` to start streaming with `openai.ChatCompletion.create`.
 
-5. **Add a Rich/Textual Interface** (optional)
-   - If you want a dynamic terminal UI similar to Ink, create components under `components/` using Rich or Textual widgets.
-   - Keep the first version simple: print outputs and ask for confirmations via standard input.
+5. **Process Responses**
+   - Display assistant messages as they stream in. When a tool call is approved, run the command via `subprocess` or a Docker sandbox and feed the output back as `function_call_output`.
 
-6. **Testing**
-   - Use `pytest` to mirror the existing test cases in `codex-cli/tests/`.
-   - Run tests locally with `pytest` and keep them fast and focused.
+6. **Loop and Finish**
+   - Continue this cycle until the API signals completion or the user cancels. Save each conversation to `logs/` for later review.
 
-7. **Packaging**
-   - Expose a console script named `codex` in `pyproject.toml` so users can install with `pip install .` and run `codex` from the command line.
-   - Document installation and usage in a new README.
+7. **Testing**
+   - Add pytest cases under `tests/` to keep behaviour stable. Run them with `pytest` regularly.
+
+8. **Packaging**
+   - Expose a console script named `codex` in `pyproject.toml` pointing to `codex_py.cli.main:app` so you can install the tool with `pip install .`.
+   - Document installation and usage in a README.
 
 ## 5. Tips for Beginners
 
@@ -101,6 +98,8 @@ implementation of the Codex CLI, check out
 launch `codex` with a prompt: from loading configuration, creating the
 `AgentLoop`, streaming responses from the OpenAI API and executing shell
 commands, all the way to writing the rollout log.
+For a Python oriented summary of the same process see
+[`workflow_py.md`](workflow_py.md).
 
 ---
 
